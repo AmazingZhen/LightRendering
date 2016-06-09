@@ -37,47 +37,47 @@ GLuint cubeVAO, cubeVBO;
 
 GLfloat skyboxVertices[] = {
 	// Positions          
-	-2.0f, 2.0f, -2.0f,
-	-2.0f, -2.0f, -2.0f,
-	2.0f, -2.0f, -2.0f,
-	2.0f, -2.0f, -2.0f,
-	2.0f, 2.0f, -2.0f,
-	-2.0f, 2.0f, -2.0f,
+	-1.0f, 1.0f, -1.0f,
+	-1.0f, -1.0f, -1.0f,
+	1.0f, -1.0f, -1.0f,
+	1.0f, -1.0f, -1.0f,
+	1.0f, 1.0f, -1.0f,
+	-1.0f, 1.0f, -1.0f,
 
-	-2.0f, -2.0f, 2.0f,
-	-2.0f, -2.0f, -2.0f,
-	-2.0f, 2.0f, -2.0f,
-	-2.0f, 2.0f, -2.0f,
-	-2.0f, 2.0f, 2.0f,
-	-2.0f, -2.0f, 2.0f,
+	-1.0f, -1.0f, 1.0f,
+	-1.0f, -1.0f, -1.0f,
+	-1.0f, 1.0f, -1.0f,
+	-1.0f, 1.0f, -1.0f,
+	-1.0f, 1.0f, 1.0f,
+	-1.0f, -1.0f, 1.0f,
 
-	2.0f, -2.0f, -2.0f,
-	2.0f, -2.0f, 2.0f,
-	2.0f, 2.0f, 2.0f,
-	2.0f, 2.0f, 2.0f,
-	2.0f, 2.0f, -2.0f,
-	2.0f, -2.0f, -2.0f,
+	1.0f, -1.0f, -1.0f,
+	1.0f, -1.0f, 1.0f,
+	1.0f, 1.0f, 1.0f,
+	1.0f, 1.0f, 1.0f,
+	1.0f, 1.0f, -1.0f,
+	1.0f, -1.0f, -1.0f,
 
-	-2.0f, -2.0f, 2.0f,
-	-2.0f, 2.0f, 2.0f,
-	2.0f, 2.0f, 2.0f,
-	2.0f, 2.0f, 2.0f,
-	2.0f, -2.0f, 2.0f,
-	-2.0f, -2.0f, 2.0f,
+	-1.0f, -1.0f, 1.0f,
+	-1.0f, 1.0f, 1.0f,
+	1.0f, 1.0f, 1.0f,
+	1.0f, 1.0f, 1.0f,
+	1.0f, -1.0f, 1.0f,
+	-1.0f, -1.0f, 1.0f,
 
-	-2.0f, 2.0f, -2.0f,
-	2.0f, 2.0f, -2.0f,
-	2.0f, 2.0f, 2.0f,
-	2.0f, 2.0f, 2.0f,
-	-2.0f, 2.0f, 2.0f,
-	-2.0f, 2.0f, -2.0f,
+	-1.0f, 1.0f, -1.0f,
+	1.0f, 1.0f, -1.0f,
+	1.0f, 1.0f, 1.0f,
+	1.0f, 1.0f, 1.0f,
+	-1.0f, 1.0f, 1.0f,
+	-1.0f, 1.0f, -1.0f,
 
-	-2.0f, -2.0f, -2.0f,
-	-2.0f, -2.0f, 2.0f,
-	2.0f, -2.0f, -2.0f,
-	2.0f, -2.0f, -2.0f,
-	-2.0f, -2.0f, 2.0f,
-	2.0f, -2.0f, 2.0f
+	-1.0f, -1.0f, -1.0f,
+	-1.0f, -1.0f, 1.0f,
+	1.0f, -1.0f, -1.0f,
+	1.0f, -1.0f, -1.0f,
+	-1.0f, -1.0f, 1.0f,
+	1.0f, -1.0f, 1.0f
 };
 
 // A simple cube for testing.
@@ -139,6 +139,17 @@ vector<GLfloat> scale;
 
 int chosenIndex = 0;
 int mode = 1;
+
+// 2 ^ 6 = 64.
+// Take 64 samples for each vertex.
+static GLuint g_m = 6;
+
+// Roughness of the material.
+static GLfloat g_roughness = 0.1f;
+
+// Reflection coefficient
+// see http://en.wikipedia.org/wiki/Schlick%27s_approximation
+static GLfloat g_R0 = 0.2f;
 
 void initSkybox() {
 	// Setup skybox VAO
@@ -367,9 +378,16 @@ void drawModel() {
 	GLfloat model_view[16];
 	glGetFloatv(GL_MODELVIEW_MATRIX, model_view);
 
-	glUniformMatrix4fv(glGetUniformLocation(modelShaderProgram, "model_view"), 1, GL_FALSE, model_view);
-	glUniformMatrix4fv(glGetUniformLocation(modelShaderProgram, "projection"), 1, GL_FALSE, projection);
+	glUniformMatrix4fv(glGetUniformLocation(modelShaderProgram, "MV"), 1, GL_FALSE, model_view);
+	glUniformMatrix4fv(glGetUniformLocation(modelShaderProgram, "P"), 1, GL_FALSE, projection);
 	glUniform1i(glGetUniformLocation(modelShaderProgram, "mode"), mode);
+
+	glUniform1ui(glGetUniformLocation(modelShaderProgram, "u_numberSamples"), 1 << g_m);
+	glUniform1ui(glGetUniformLocation(modelShaderProgram, "u_m"), g_m);
+	// Results are in range [0.0 1.0] and not [0.0, 1.0].
+	glUniform1f(glGetUniformLocation(modelShaderProgram, "u_binaryFractionFactor"), 1.0f / (powf(2.0f, (GLfloat)g_m) - 1.0f));
+	glUniform1f(glGetUniformLocation(modelShaderProgram, "u_roughnessMaterial"), g_roughness);
+	glUniform1f(glGetUniformLocation(modelShaderProgram, "u_R0Material"), g_R0);
 
 	glBindVertexArray(modelVAO[chosenIndex]);
 	glBindTexture(GL_TEXTURE_CUBE_MAP, skyboxTexture);
@@ -476,16 +494,52 @@ void myKeyboard(unsigned char key, int x, int y) {
 	case 'D':
 		xOffset[chosenIndex] += 0.1f;
 		break;
+	case 'Q':
+		if (g_m > 1) {
+			g_m -= 1;
+		}
+		break;
+	case 'E':
+		g_m += 1;
+		break;
+	case 'Z':
+		if (g_roughness > 0.15f) {
+			g_roughness -= 0.1f;
+		}
+		break;
+	case 'X':
+		if (g_roughness < 1.0f) {
+			g_roughness += 0.1f;
+		}
+		break;
+	case 'C':
+		if (g_R0 > 0.15f) {
+			g_R0 -= 0.1f;
+		}
+		break;
+	case 'V':
+		if (g_R0 < 1.0f) {
+			g_R0 += 0.1f;
+		}
+		break;
 	case '1':
 		mode = 1;
 		break;
 	case '2':
 		mode = 2;
 		break;
+	case '3':
+		mode = 3;
+		break;
+	case '4':
+		mode = 4;
+		break;
+
 	default:
 		break;
 	}
-	cout << yOffset[chosenIndex] << endl;
+	cout << g_roughness << ", " << g_R0 << endl;
+
 	glutPostRedisplay();
 }
 

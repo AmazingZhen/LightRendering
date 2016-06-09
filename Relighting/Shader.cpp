@@ -1,18 +1,23 @@
 #include "stdafx.h"
 #include "Shader.h"
 
+#define MAX_LENGTH 100000
+
 GLuint getShader(const char *filepath, int shaderType) {
 	GLuint vertexShaderObj = glCreateShader(shaderType);
 
 	ifstream fin(filepath);
-	char st[4096];
+	char st[100000];
 	char c;
 	int n = 0;
 
-	while (1){
+	while (1) {
 		fin.get(c);
-		if (fin.eof()) break;
-		st[n] = c; n++;
+		if (fin.eof()) {
+			break;
+		}
+		st[n] = c;
+		n++;
 	}
 	st[n] = '\0';
 	fin.close();
