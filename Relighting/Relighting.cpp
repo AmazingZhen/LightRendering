@@ -19,13 +19,11 @@
 #define WINDOW_HEIGHT 800
 #define FILE_FOLDER "dataset\\"
 
-#pragma comment (lib, "glew32.lib")
-#pragma comment (lib, "SOIL.lib")
-#pragma comment (lib, "OpenMeshCored.lib")
-#pragma comment (lib, "OpenMeshToolsd.lib")
+#define NUM_OF_SKYBOX 4
+int chosenSkybox = 0;
 
-GLuint skyboxTexture;
-GLuint skyboxVAO, skyboxVBO;
+vector<GLuint> skyboxTexture;
+vector<GLuint> skyboxVAO, skyboxVBO;
 GLuint skyboxShaderProgram;
 
 vector<GLuint> modelVAO;
@@ -151,48 +149,64 @@ static GLfloat g_roughness = 0.1f;
 // see http://en.wikipedia.org/wiki/Schlick%27s_approximation
 static GLfloat g_R0 = 0.2f;
 
+string num2str(double i) {
+	stringstream ss;
+	ss << i;
+	return ss.str();
+}
+
 void initSkybox() {
-	// Setup skybox VAO
-	glGenVertexArrays(1, &skyboxVAO);
-	glGenBuffers(1, &skyboxVBO);
-	glBindVertexArray(skyboxVAO);
-	glBindBuffer(GL_ARRAY_BUFFER, skyboxVBO);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(skyboxVertices), &skyboxVertices, GL_STATIC_DRAW);
-	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(GLfloat), (GLvoid*)0);
-	glBindVertexArray(0);
+	skyboxTexture = vector<GLuint>(NUM_OF_SKYBOX);
+	skyboxVAO = vector<GLuint>(NUM_OF_SKYBOX);
+	skyboxVBO = vector<GLuint>(NUM_OF_SKYBOX);
 
-	// Create a cubemap texture.
-	glGenTextures(1, &skyboxTexture);
-	glBindTexture(GL_TEXTURE_CUBE_MAP, skyboxTexture);
+	for (int i = 0; i < NUM_OF_SKYBOX; i++) {
 
-	// Loading six faces.
-	vector<const GLchar*> faces;
-	faces.push_back("skybox\\right.jpg");
-	faces.push_back("skybox\\left.jpg");
-	faces.push_back("skybox\\top.jpg");
-	faces.push_back("skybox\\bottom.jpg");
-	faces.push_back("skybox\\back.jpg");
-	faces.push_back("skybox\\front.jpg");
+		// Setup skybox VAO
+		glGenVertexArrays(1, &skyboxVAO[i]);
+		glGenBuffers(1, &skyboxVBO[i]);
+		glBindVertexArray(skyboxVAO[i]);
+		glBindBuffer(GL_ARRAY_BUFFER, skyboxVBO[i]);
+		glBufferData(GL_ARRAY_BUFFER, sizeof(skyboxVertices), &skyboxVertices, GL_STATIC_DRAW);
+		glEnableVertexAttribArray(0);
+		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(GLfloat), (GLvoid*)0);
+		glBindVertexArray(0);
 
-	int width, height;
-	unsigned char* image;
-	for (GLuint i = 0; i < faces.size(); i++) {
-		image = SOIL_load_image(faces[i], &width, &height, 0, SOIL_LOAD_RGB);
+		// Create a cubemap texture.
+		glGenTextures(1, &skyboxTexture[i]);
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_CUBE_MAP, skyboxTexture[i]);
 
-		glTexImage2D(
-			GL_TEXTURE_CUBE_MAP_POSITIVE_X + i,
-			0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, image
-			);
+		// Loading six faces.
+		vector<string> faces;
+		faces.push_back((string("skybox\\") + num2str(i + 1) + string("\\right.jpg")));
+		faces.push_back((string("skybox\\") + num2str(i + 1) + string("\\left.jpg")));
+		faces.push_back((string("skybox\\") + num2str(i + 1) + string("\\top.jpg")));
+		faces.push_back((string("skybox\\") + num2str(i + 1) + string("\\bottom.jpg")));
+		faces.push_back((string("skybox\\") + num2str(i + 1) + string("\\back.jpg")));
+		faces.push_back((string("skybox\\") + num2str(i + 1) + string("\\front.jpg")));
 
-		SOIL_free_image_data(image);
+		int width, height;
+		unsigned char* image;
+		for (GLuint j = 0; j < faces.size(); j++) {
+
+			image = SOIL_load_image(faces[j].c_str(), &width, &height, 0, SOIL_LOAD_RGB);
+
+			glTexImage2D(
+				GL_TEXTURE_CUBE_MAP_POSITIVE_X + j,
+				0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, image
+				);
+
+			SOIL_free_image_data(image);
+		}
+
+		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+
 	}
-
-	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
 
 	glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
 }
@@ -359,8 +373,8 @@ void drawSkybox() {
 	glUniformMatrix4fv(glGetUniformLocation(skyboxShaderProgram, "view"), 1, GL_FALSE, view);
 	glUniformMatrix4fv(glGetUniformLocation(skyboxShaderProgram, "projection"), 1, GL_FALSE, projection);
 
-	glBindVertexArray(skyboxVAO);
-	glBindTexture(GL_TEXTURE_CUBE_MAP, skyboxTexture);
+	glBindVertexArray(skyboxVAO[chosenSkybox]);
+	glBindTexture(GL_TEXTURE_CUBE_MAP, skyboxTexture[chosenSkybox]);
 	glDrawArrays(GL_TRIANGLES, 0, 36);
 	glBindVertexArray(0);
 
@@ -390,7 +404,7 @@ void drawModel() {
 	glUniform1f(glGetUniformLocation(modelShaderProgram, "u_R0Material"), g_R0);
 
 	glBindVertexArray(modelVAO[chosenIndex]);
-	glBindTexture(GL_TEXTURE_CUBE_MAP, skyboxTexture);
+	glBindTexture(GL_TEXTURE_CUBE_MAP, skyboxTexture[chosenSkybox]);
 	glDrawArrays(GL_TRIANGLES, 0, numOfVertex[chosenIndex]);
 	glBindVertexArray(0);
 
@@ -399,17 +413,26 @@ void drawModel() {
 
 void drawCube() {
 	glUseProgram(modelShaderProgram);
+	glUseProgram(modelShaderProgram);
 
 	GLfloat projection[16];
 	glGetFloatv(GL_PROJECTION_MATRIX, projection);
 	GLfloat model_view[16];
 	glGetFloatv(GL_MODELVIEW_MATRIX, model_view);
 
-	glUniformMatrix4fv(glGetUniformLocation(modelShaderProgram, "model_view"), 1, GL_FALSE, model_view);
-	glUniformMatrix4fv(glGetUniformLocation(modelShaderProgram, "projection"), 1, GL_FALSE, projection);
+	glUniformMatrix4fv(glGetUniformLocation(modelShaderProgram, "MV"), 1, GL_FALSE, model_view);
+	glUniformMatrix4fv(glGetUniformLocation(modelShaderProgram, "P"), 1, GL_FALSE, projection);
+	glUniform1i(glGetUniformLocation(modelShaderProgram, "mode"), mode);
+
+	glUniform1ui(glGetUniformLocation(modelShaderProgram, "u_numberSamples"), 1 << g_m);
+	glUniform1ui(glGetUniformLocation(modelShaderProgram, "u_m"), g_m);
+	// Results are in range [0.0 1.0] and not [0.0, 1.0].
+	glUniform1f(glGetUniformLocation(modelShaderProgram, "u_binaryFractionFactor"), 1.0f / (powf(2.0f, (GLfloat)g_m) - 1.0f));
+	glUniform1f(glGetUniformLocation(modelShaderProgram, "u_roughnessMaterial"), g_roughness);
+	glUniform1f(glGetUniformLocation(modelShaderProgram, "u_R0Material"), g_R0);
 
 	glBindVertexArray(cubeVAO);
-	glBindTexture(GL_TEXTURE_CUBE_MAP, skyboxTexture);
+	glBindTexture(GL_TEXTURE_CUBE_MAP, skyboxTexture[chosenSkybox]);
 	glDrawArrays(GL_TRIANGLES, 0, 36);
 	glBindVertexArray(0);
 
@@ -520,6 +543,20 @@ void myKeyboard(unsigned char key, int x, int y) {
 	case 'V':
 		if (g_R0 < 1.0f) {
 			g_R0 += 0.1f;
+		}
+		break;
+	case 'B':
+		chosenSkybox++;
+
+		if (chosenSkybox == NUM_OF_SKYBOX) {
+			chosenSkybox = 0;
+		}
+		break;
+	case 'N':
+		chosenSkybox--;
+
+		if (chosenSkybox == -1) {
+			chosenSkybox = NUM_OF_SKYBOX - 1;
 		}
 		break;
 	case '1':
