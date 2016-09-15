@@ -1,4 +1,4 @@
-# Relighting
+# Light Rendering
  An implementation for environment mapping by physical-based rendering.  
  Base on [Physically Based Rendering, Second Edition](http://pbrt.org/) and [https://github.com/McNopper/OpenGL](https://github.com/McNopper/OpenGL).
 
